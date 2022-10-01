@@ -1,0 +1,190 @@
+<?php declare(strict_types=1);
+
+
+namespace AccountOverview\Core\Api\Controller;
+
+
+use Shopware\Core\Checkout\Customer\CustomerEntity;
+use Shopware\Core\Checkout\Customer\Event\CustomerBeforeLoginEvent;
+use Shopware\Core\Checkout\Customer\Event\CustomerLoginEvent;
+use Shopware\Core\Checkout\Customer\Exception\BadCredentialsException;
+use Shopware\Core\Checkout\Customer\Exception\CustomerAuthThrottledException;
+use Shopware\Core\Checkout\Customer\Exception\CustomerNotFoundException;
+use Shopware\Core\Checkout\Customer\Exception\InactiveCustomerException;
+use Shopware\Core\Checkout\Customer\Password\LegacyPasswordVerifier;
+use Shopware\Core\Framework\Context;
+use Shopware\Core\Framework\DataAbstractionLayer\EntityRepository;
+use Shopware\Core\Framework\DataAbstractionLayer\Search\Criteria;
+use Shopware\Core\Framework\DataAbstractionLayer\Search\Filter\EqualsFilter;
+use Shopware\Core\Framework\RateLimiter\Exception\RateLimitExceededException;
+use Shopware\Core\Framework\RateLimiter\RateLimiter;
+use Shopware\Core\Framework\Validation\DataBag\RequestDataBag;
+use Shopware\Core\System\SalesChannel\Context\CartRestorer;
+use Shopware\Core\System\SalesChannel\ContextTokenResponse;
+use Shopware\Core\System\SalesChannel\SalesChannelContext;
+use Symfony\Component\EventDispatcher\EventDispatcherInterface;
+use Symfony\Component\HttpFoundation\RequestStack;
+use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Symfony\Component\HttpFoundation\JsonResponse;
+use Symfony\Component\Routing\Annotation\Route;
+
+/**
+ * @Route(defaults={"_routeScope"={"store-api"}})
+ * @deprecated tag:v6.5.0 - reason:becomes-internal - Will be internal
+ */
+class AccountLoginController extends AbstractController
+{
+
+    private EventDispatcherInterface $eventDispatcher;
+
+    private EntityRepository $customerRepository;
+
+    private LegacyPasswordVerifier $legacyPasswordVerifier;
+
+    private CartRestorer $restorer;
+
+    private RequestStack $requestStack;
+
+    private RateLimiter $rateLimiter;
+
+    /**
+     * @internal
+     */
+    public function __construct(
+        EventDispatcherInterface $eventDispatcher,
+        EntityRepository $customerRepository,
+        LegacyPasswordVerifier $legacyPasswordVerifier,
+        CartRestorer $restorer,
+        RequestStack $requestStack,
+        RateLimiter $rateLimiter
+    ) {
+        $this->eventDispatcher = $eventDispatcher;
+        $this->customerRepository = $customerRepository;
+        $this->legacyPasswordVerifier = $legacyPasswordVerifier;
+        $this->restorer = $restorer;
+        $this->requestStack = $requestStack;
+        $this->rateLimiter = $rateLimiter;
+    }
+
+    /**
+     * @Route ("store-api/account-overview/login", name="api.account.overview.login", methods={"POST"})
+     * @param RequestDataBag $data
+     * @param SalesChannelContext $context
+     * @return JsonResponse
+     */
+    public function login(RequestDataBag $data, SalesChannelContext $context): JsonResponse
+    {
+        $email = $data->get('email', $data->get('username'));
+
+        if (empty($email) || empty($data->get('password'))) {
+            throw new BadCredentialsException();
+        }
+        $event = new CustomerBeforeLoginEvent($context, $email);
+        $this->eventDispatcher->dispatch($event);
+        if ($this->requestStack->getMainRequest() !== null) {
+            $cacheKey = strtolower($email) . '-' . $this->requestStack->getMainRequest()->getClientIp();
+            try {
+
+                $this->rateLimiter->ensureAccepted(RateLimiter::LOGIN_ROUTE, $cacheKey);
+            } catch (RateLimitExceededException $exception) {
+                throw new CustomerAuthThrottledException($exception->getWaitTime(), $exception);
+               }
+        }
+        try {
+            $customer = $this->getCustomerByLogin(
+                $email,
+                $data->get('password'),
+                $context
+            );
+        } catch (CustomerNotFoundException | BadCredentialsException $exception) {
+            return new JsonResponse([
+                'type' => 'fail',
+                'status' => 401,
+                'message' => 'Bad Credentials'
+
+            ]);
+        }
+        if (isset($cacheKey)) {
+            $this->rateLimiter->reset(RateLimiter::LOGIN_ROUTE, $cacheKey);
+        }
+        if (!$customer->getActive()) {
+            throw new InactiveCustomerException($customer->getId());
+        }
+        $context = $this->restorer->restore($customer->getId(), $context);
+        $newToken = $context->getToken();
+        $this->customerRepository->update([
+            [
+                'id' => $customer->getId(),
+                'lastLogin' => new \DateTimeImmutable(),
+            ],
+        ], $context->getContext());
+
+        $event = new CustomerLoginEvent($context, $customer, $newToken);
+        $this->eventDispatcher->dispatch($event);
+        $returnThisToken = new ContextTokenResponse($newToken);
+        return new JsonResponse([
+            'type' => 'success',
+            'status' => 200,
+            'token' => $newToken,
+
+        ]);
+    }
+    private function getCustomerByLogin(string $email, string $password, SalesChannelContext $context): CustomerEntity
+    {
+        $customer = $this->getCustomerByEmail($email, $context);
+        if ($customer->hasLegacyPassword()) {
+            if (!$this->legacyPasswordVerifier->verify($password, $customer)) {
+                throw new BadCredentialsException();
+            }
+            $this->updatePasswordHash($password, $customer, $context->getContext());
+            return $customer;
+        }
+        if (!password_verify($password, $customer->getPassword() ?? '')) {
+            throw new BadCredentialsException();
+        }
+        return $customer;
+    }
+
+    private function getCustomerByEmail(string $email, SalesChannelContext $context): CustomerEntity
+    {
+        $criteria = new Criteria();
+        $criteria->setTitle('login-route');
+        $criteria->addFilter(new EqualsFilter('customer.email', $email));
+        $result = $this->customerRepository->search($criteria, $context->getContext());
+        $result = $result->filter(static function (CustomerEntity $customer) use ($context) {
+            $isConfirmed = !$customer->getDoubleOptInRegistration() || $customer->getDoubleOptInConfirmDate();
+
+            // Skip guest and not active users
+            if ($customer->getGuest() || (!$customer->getActive() && $isConfirmed)) {
+                return null;
+            }
+            // If not bound, we still need to consider it
+            if ($customer->getBoundSalesChannelId() === null) {
+                return true;
+            }
+            // It is bound, but not to the current one. Skip it
+            if ($customer->getBoundSalesChannelId() !== $context->getSalesChannel()->getId()) {
+                return null;
+            }
+            return true;
+        });
+
+        if ($result->count() !== 1) {
+            throw new BadCredentialsException();
+        }
+        return $result->first();
+    }
+
+    private function updatePasswordHash(string $password, CustomerEntity $customer, Context $context): void
+    {
+        $this->customerRepository->update([
+            [
+                'id' => $customer->getId(),
+                'password' => $password,
+                'legacyPassword' => null,
+                'legacyEncoder' => null,
+            ],
+        ], $context);
+    }
+
+}

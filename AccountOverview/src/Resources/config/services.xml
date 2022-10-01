@@ -1,0 +1,75 @@
+<?xml version="1.0" ?>
+
+<container xmlns="http://symfony.com/schema/dic/services"
+           xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+           xsi:schemaLocation="http://symfony.com/schema/dic/services http://symfony.com/schema/dic/services/services-1.0.xsd">
+
+    <services>
+        <service id="AccountOverview\Core\Content\Account\SalesChannel\AccountRoute" public="true">
+            <argument type="service" id="account_register_customer.repository"/>
+        </service>
+        <service id="AccountOverview\Core\Api\Controller\AccountRegisterController" public="true">
+            <argument type="service" id="Shopware\Core\Content\Mail\Service\MailFactory"/>
+            <argument type="service" id="Shopware\Core\Content\Mail\Service\MailSender"/>
+            <argument id="account_register_verification.repository" type="service" />
+            <argument id="mail_template_type.repository" type="service" />
+            <argument type="service" id="Shopware\Core\System\SystemConfig\SystemConfigService"/>
+            <argument type="service" id="log_entry.repository"/>
+            <argument type="service" id="category.repository"/>
+            <argument type="service" id="promotion.repository"/>
+            <argument type="service" id="customer.repository"/>
+            <argument type="service" id="customer_group.repository"/>
+            <argument type="service" id="product.repository"/>
+            <argument type="service" id="Shopware\Core\System\NumberRange\ValueGenerator\NumberRangeValueGeneratorInterface"/>
+            <argument type="service" id="customer_extension.repository"/>
+            <call method="setContainer">
+                <argument type="service"  id="service_container"/>
+            </call>
+        </service>
+        <service id="AccountOverview\Core\Api\Controller\AccountLoginController" public="true">
+            <argument type="service" id="event_dispatcher"/>
+            <argument type="service" id="customer.repository"/>
+            <argument type="service" id="Shopware\Core\Checkout\Customer\Password\LegacyPasswordVerifier"/>
+            <argument type="service" id="Shopware\Core\System\SalesChannel\Context\CartRestorer"/>
+            <argument type="service" id="Symfony\Component\HttpFoundation\RequestStack"/>
+            <argument type="service" id="Shopware\Core\Framework\RateLimiter\RateLimiter"/>
+            <call method="setContainer">
+                <argument type="service"  id="service_container"/>
+            </call>
+        </service>
+        <service id="AccountOverview\Core\Api\Controller\AccountLogoutController" public="true">
+                <argument type="service" id="Shopware\Core\System\SalesChannel\Context\SalesChannelContextPersister"/>
+                <argument type="service" id="event_dispatcher"/>
+                <argument type="service" id="Shopware\Core\System\SystemConfig\SystemConfigService"/>
+                <argument type="service" id="Shopware\Core\Checkout\Cart\SalesChannel\CartService"/>
+                <argument type="service" id="customer.repository"/>
+            <call method="setContainer">
+                <argument type="service"  id="service_container"/>
+            </call>
+        </service>
+        <service id="AccountOverview\Core\Content\RegisterVerification\AccountRegisterVerificationDefinition">
+            <tag name="shopware.entity.definition" entity="account_register_verification" />
+        </service>
+
+        <service id="AccountOverview\Core\Content\RegisterCustomer\AccountRegisterCustomerDefinition">
+            <tag name="shopware.entity.definition" entity="account_register_customer" />
+        </service>
+
+        <service id="AccountOverview\Core\Content\CustomerExtension\CustomerExtensionDefinition">
+            <tag name="shopware.entity.definition" entity="customer_extension" />
+        </service>
+
+        <service id="AccountOverview\Core\Content\Extension\AccountRegisterCategoryExtension">
+            <tag name="shopware.entity.extension" />
+        </service>
+
+        <service id="AccountOverview\Core\Content\Extension\AccountRegisterCustomerExtension">
+            <tag name="shopware.entity.extension" />
+        </service>
+
+        <service id="AccountOverview\Core\Content\Extension\CustomreCustomfieldExtension">
+            <tag name="shopware.entity.extension" />
+        </service>
+
+    </services>
+</container>

@@ -1,0 +1,23 @@
+{
+  "name": "swag/account-overview",
+  "description": "Account Profile Overview",
+  "type": "shopware-platform-plugin",
+  "license": "MIT",
+  "version": "v1.0.0",
+  "autoload": {
+    "psr-4": {
+      "AccountOverview\\": "src/"
+    }
+  },
+  "extra": {
+    "shopware-plugin-class": "AccountOverview\\AccountOverview",
+      "label": {
+          "de-DE": "Kontoübersicht plugin",
+          "en-GB": "Account Overview plugin"
+      },
+      "description": {
+          "de-DE": "Kontoprofilübersicht",
+          "en-GB": "Account Profile Overview"
+      }
+  }
+}
