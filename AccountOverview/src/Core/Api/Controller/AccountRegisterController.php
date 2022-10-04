@@ -2,11 +2,14 @@
 
 namespace AccountOverview\Core\Api\Controller;
 
+
+use Doctrine\DBAL\Connection;
 use Shopware\Core\Content\Mail\Service\AbstractMailFactory;
 use Shopware\Core\Content\Mail\Service\AbstractMailSender;
 use Shopware\Core\Framework\DataAbstractionLayer\EntityRepository;
 use Shopware\Core\Framework\DataAbstractionLayer\Search\Criteria;
 use Monolog\Logger;
+use Shopware\Core\Test\TestDefaults;
 use Shopware\Core\Framework\Context;
 use Shopware\Core\Framework\DataAbstractionLayer\Search\Filter\EqualsFilter;
 use Shopware\Core\Framework\Uuid\Uuid;
@@ -226,12 +229,12 @@ class AccountRegisterController extends AbstractController
         $email = $request->get('email');
         $opt = $request->get('otp');
         //Personal Details
-        $customer_id = $request->get('customerId');
-        $first_name = $request->get('firstName');
-        $last_name = $request->get('lastName');
-        $birthday = $request->get('birthday');
-        $phone_number = $request->get('phoneNumber');
-        $address = $request->get('additionalAddressLine1');
+//        $customer_id = $request->get('customerId');
+//        $first_name = $request->get('firstName');
+//        $last_name = $request->get('lastName');
+//        $birthday = $request->get('birthday');
+//        $phone_number = $request->get('phoneNumber');
+//        $address = $request->get('additionalAddressLine1');
         //verifying data with database
         $criteria = new Criteria();
         $criteria->addFilter(new EqualsFilter('email', $email));
@@ -244,22 +247,23 @@ class AccountRegisterController extends AbstractController
                 'status' => 404,
                 'type' => 'Fail',
             ]);
-        }else{
-        // Storing Personal Details in variable
-        $data = [];
-        $data[] = [
-            'id' => $customer_id,
-            'first_name' => $first_name,
-            'last_name' => $last_name,
-            'birthday' => $birthday,
-            'additional_address_line1' => $address,
-            'phone_number' => $phone_number
-            ];
         }
+//        else{
+        // Storing Personal Details in variable
+//        $data = [];
+//        $data[] = [
+//            'id' => $customer_id,
+//            'first_name' => $first_name,
+//            'last_name' => $last_name,
+//            'birthday' => $birthday,
+//            'additional_address_line1' => $address,
+//            'phone_number' => $phone_number
+//            ];
+//        }
         return new JsonResponse([
             'type' => 'success',
             'status' => 200,
-            'data' => json_encode($data),
+            'data' => 'OTP verified',
         ]);
 
     }
@@ -279,6 +283,7 @@ class AccountRegisterController extends AbstractController
         $emailFindCriteria = new Criteria();
         $emailFindCriteria->addFilter(new EqualsFilter('email', $email));
         $emailData = $this->accountRegisterVerificationRepository->search($emailFindCriteria, $context)->first();
+
         //Checking for UUID exists or not?
         if (!empty($emailData)) {
             $OTP = random_int(10000, 99999);
@@ -290,24 +295,23 @@ class AccountRegisterController extends AbstractController
             ];
             $this->mail($context,$OTP,$email);
         }else{
-            $OTP = random_int(10000, 99999);
-            $data = [];
-            $data[] = [
-                'id' => Uuid::randomHex(),
-                'email' => $email,
-                'otp' => $OTP
-            ];
-            $this->mail($context,$OTP,$email);
+            return new JsonResponse([
+                'type' => 'fail',
+                'message'=>'this email address does not exist',
+                'status' => 404,
+            ],Response::HTTP_NOT_FOUND);
         }
         //Insert Or Update as per UUID exists or not exists
-        $this->accountRegisterVerificationRepository->upsert([$data], $context);
-        $response = true;
-        return new JsonResponse(['response' => $response]);
+        $this->accountRegisterVerificationRepository->upsert($data, $context);
+        return new JsonResponse([
+            'type' => 'success',
+            'status' => 200,
+            'data' => "OTP successfully resent",]);
 
     }
 
     /**
-     * @Route ("store-api/account-register/employeecode", name="api.account.register.employeecode", methods={"post"})
+     * @Route ("store-api/account-register/matchEmployeeCode", name="api.account.register.matchEmployeeCode", methods={"post"})
      * @param Context $context
      * @return Response
      * @throws \Exception
@@ -339,6 +343,7 @@ class AccountRegisterController extends AbstractController
                         'name' => $category->getTranslated()['name']
                     ];
                 }
+
                 return new JsonResponse([
                     'status' => 200,
                     'type' => 'Success',
@@ -368,7 +373,7 @@ class AccountRegisterController extends AbstractController
 
     public function forgotPasswordSendMail(RequestDataBag $data,Context $context): JsonResponse
     {
-        $email = $data->get('employee_email');
+        $email = $data->get('email');
         if ($email != null) {
             $customerCriteria = new Criteria();
             $customerCriteria->addFilter(new EqualsFilter('email', $email));
@@ -454,6 +459,7 @@ class AccountRegisterController extends AbstractController
                 return new JsonResponse([
                     'status' => 200,
                     'type' => 'success',
+                    'data' => 'We have sent you a temproray password on your email.'
                 ]);
             } else {
                 return new JsonResponse([
@@ -478,7 +484,7 @@ class AccountRegisterController extends AbstractController
 
     public function resetPassword(RequestDataBag $data, Context $context): JsonResponse
     {
-        $email = $data->get('employee_email');
+        $email = $data->get('email');
         $password = $data->get('password');
         $confirmPassword = $data->get('confirm_password');
         $accountFindCriteria = new Criteria();
@@ -496,13 +502,14 @@ class AccountRegisterController extends AbstractController
                 return new JsonResponse([
                     'type' => 'success',
                     'status' => 200,
-                    'data' => json_encode($data),
+                    'data' => 'user password updated successfully.',
                 ]);
             } else {
                 return new JsonResponse([
                     'type' => 'fail',
                     'status' => 404,
-                ], Response::HTTP_NOT_FOUND);
+                    'data' => 'Password and confirm Password dos not match.',
+                ]);
             }
 
         }else{
@@ -516,7 +523,7 @@ class AccountRegisterController extends AbstractController
     }
 
     /**
-     * @Route ("store-api/account-register/category", name="api.account.register.category", methods={"post"})
+     * @Route ("store-api/account-register/getCategory", name="api.account.register.getCategory ", methods={"post"})
      * @param Context $context
      * @return Response
      * @throws \Exception
@@ -524,21 +531,12 @@ class AccountRegisterController extends AbstractController
 
     public function getCategory(RequestDataBag $data,Context $context): JsonResponse
     {
-        $criteria = new Criteria();
-        $criteria->addAssociation('translations.name');
-        $categories = $this->categoryRepository->search($criteria, $context)->getElements();
-        foreach ($categories as $category) {
-            $cat[] = [
-                'id' => $category->getId(),
-                'name' => $category->getTranslated()['name']
-            ];
-        }
         $categoryId = $data->get('category_id');
         if (!empty($categoryId)) {
             return new JsonResponse([
                 'status' => 200,
                 'type' => 'success',
-                'categoryIds' => $cat
+                'categoryIds' => $categoryId
             ]);
 
         } else {
@@ -611,11 +609,13 @@ class AccountRegisterController extends AbstractController
             return new JsonResponse([
                 'status' => 201,
                 'type' => 'success',
+                'data' => 'Customer successfully register',
             ]);
         }else{
             return new JsonResponse([
                 'status' => 403,
                 'type' => 'fail',
+                'data' => 'Customer already there please try other email address '
             ]);
         }
     }
