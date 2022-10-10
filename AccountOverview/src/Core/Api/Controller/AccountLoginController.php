@@ -126,6 +126,7 @@ class AccountLoginController extends AbstractController
             'type' => 'success',
             'status' => 200,
             'token' => $newToken,
+            'customer_id' => $customer->getId()
 
         ]);
     }

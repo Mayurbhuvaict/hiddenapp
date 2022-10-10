@@ -522,6 +522,36 @@ class AccountRegisterController extends AbstractController
 
     }
 
+
+    /**
+     * @Route ("store-api/account-register/listCategory", name="api.account.register.listCategory ", methods={"post"})
+     * @param Context $context
+     * @return Response
+     * @throws \Exception
+     */
+
+    public function listCategory(RequestDataBag $data,Context $context): JsonResponse
+    {
+
+        $criteria = new Criteria();
+        $criteria->addAssociation('translations.name');
+        $categories = $this->categoryRepository->search($criteria, $context)->getElements();
+        foreach ($categories as $category) {
+            $cat[] = [
+                'id' => $category->getId(),
+                'name' => $category->getTranslated()['name']
+            ];
+        }
+
+        return new JsonResponse([
+            'status' => 200,
+            'type' => 'Success',
+            'categories'=>$cat
+        ]);
+
+    }
+
+
     /**
      * @Route ("store-api/account-register/getCategory", name="api.account.register.getCategory ", methods={"post"})
      * @param Context $context
