@@ -1,0 +1,19 @@
+{
+  "name": "swag/onboarding-pages-overview",
+  "description": "Onboarding Pages Overview",
+  "type": "shopware-platform-plugin",
+  "version": "v1.0.0",
+  "license": "MIT",
+  "autoload": {
+    "psr-4": {
+      "OnboardingPagesOverview\\": "src/"
+    }
+  },
+  "extra": {
+    "shopware-plugin-class": "OnboardingPagesOverview\\OnboardingPagesOverview",
+    "label": {
+      "de-DE": "Übersicht über Onboarding-Seiten",
+      "en-GB": "Onboarding Pages Overview"
+    }
+  }
+}

@@ -1,0 +1,44 @@
+<?xml version="1.0" ?>
+
+<container xmlns="http://symfony.com/schema/dic/services"
+           xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+           xsi:schemaLocation="http://symfony.com/schema/dic/services http://symfony.com/schema/dic/services/services-1.0.xsd">
+
+    <services>
+         <!--Definition start -->
+         <!--Cms page overview-->
+        <service id="OnboardingPagesOverview\Core\Content\CmsPagesOverview\CmsPagesOverviewDefinition">
+            <tag name="shopware.entity.definition" entity="cms_pages_overview" />
+        </service>
+        <service id="OnboardingPagesOverview\Core\Content\CmsPagesOverview\Aggregate\CmsPagesOverviewTranslation\CmsPagesOverviewTranslationDefinition">
+            <tag name="shopware.entity.definition" entity="cms_pages_overview_translation" />
+        </service>
+        <service id="OnboardingPagesOverview\Core\Content\CmsPagesDetail\CmsPagesDetailDefinition">
+            <tag name="shopware.entity.definition" entity="cms_pages_detail" />
+        </service>
+        <service id="OnboardingPagesOverview\Core\Content\CmsPagesDetail\Aggregate\CmsPagesDetailTranslation\CmsPagesDetailTranslationDefinition">
+            <tag name="shopware.entity.definition" entity="cms_pages_detail_translation" />
+        </service>
+        <service id="OnboardingPagesOverview\Core\Content\Extension\ImageExtension">
+            <tag name="shopware.entity.extension"/>
+        </service>
+        <service id="OnboardingPagesOverview\Core\Content\Extension\PageExtension">
+            <tag name="shopware.entity.extension"/>
+        </service>
+        <service id="OnboardingPagesOverview\Core\Content\Extension\LanguageExtension">
+            <tag name="shopware.entity.extension"/>
+        </service>
+<!--        <service id="OnboardingPagesOverview\Core\Content\Extension\OverviewLanguageExtension">-->
+<!--            <tag name="shopware.entity.extension"/>-->
+<!--        </service>-->
+        <!--Definition end-->
+        <!--Api Controller start -->
+        <service id="OnboardingPagesOverview\Core\Api\CmsPageController" public="true">
+            <argument id="cms_pages_detail.repository" type="service" />
+            <call method="setContainer">
+                <argument id="service_container" type="service" />
+            </call>
+        </service>
+        <!--Api controller end-->
+    </services>
+</container>

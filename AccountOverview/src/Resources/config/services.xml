@@ -22,6 +22,7 @@
             <argument type="service" id="product.repository"/>
             <argument type="service" id="Shopware\Core\System\NumberRange\ValueGenerator\NumberRangeValueGeneratorInterface"/>
             <argument type="service" id="customer_extension.repository"/>
+            <argument type="service" id="Shopware\Core\System\SalesChannel\Context\SalesChannelContextPersister"/>
             <call method="setContainer">
                 <argument type="service"  id="service_container"/>
             </call>

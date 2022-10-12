@@ -74,6 +74,7 @@ class AccountLoginController extends AbstractController
      */
     public function login(RequestDataBag $data, SalesChannelContext $context): JsonResponse
     {
+
         $email = $data->get('email', $data->get('username'));
 
         if (empty($email) || empty($data->get('password'))) {

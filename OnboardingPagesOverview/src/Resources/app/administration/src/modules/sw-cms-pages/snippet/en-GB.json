@@ -1,0 +1,24 @@
+{
+  "sw-cms-pages": {
+      "detail": {
+          "addPage": "Add Page",
+          "pageName": "Title",
+          "selectPage": "Select Page",
+          "selectImage": "Select Image",
+          "save": "Save",
+          "cancel": "Cancel",
+          "description": "Description",
+          "pageInfo": "Page Information",
+          "placeholderDescription": "Enter Description",
+          "placeholderTitle": "Enter Title"
+      },
+      "list": {
+          "cmsPages": "Cms Pages",
+          "addPage": "Add Page",
+          "title": "Title",
+          "page": "Page",
+          "messageSaveSuccess": "Page \"{name}\" has been saved.",
+          "messageSaveError": "Page could not be saved."
+      }
+  }
+}

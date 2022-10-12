@@ -1,0 +1,100 @@
+{% block sw_cms_pages_list %}
+    <sw-page class="sw-cms-pages-list">
+        {% block sw_cms_pages_list_search_bar %}
+            <template #search-bar>
+                <sw-search-bar
+                    initial-search-type="cms-pages-overview"
+                    :initial-search="term"
+                    @search="onSearch"
+                />
+            </template>
+        {% endblock %}
+
+        {% block sw_cms_page_list_smart_bar_header %}
+            <template #smart-bar-header>
+                {% block sw_cms_pages_list_smart_bar_header_title %}
+                    <h2>
+                        {% block sw_cms_pages_list_smart_bar_header_title_text %}
+                            {{ $tc('sw-cms-pages.list.cmsPages') }}
+                        {% endblock %}
+
+                        {% block sw_cms_pages_list_smart_bar_header_amount %}
+                            <span
+                                v-if="!isLoading"
+                                class="sw-page__smart-bar-amount"
+                            >
+                              ({{ total }})
+                           </span>
+                        {% endblock %}
+                    </h2>
+                {% endblock %}
+            </template>
+        {% endblock %}
+
+        {% block sw_cms_pages_list_actions %}
+            <template #smart-bar-actions>
+                {% block sw_cms_pages_list_smart_bar_actions %}
+                    <sw-button
+                        v-tooltip.bottom="{
+                            message: $tc('sw-privileges.tooltip.warning'),
+                            disabled: acl.can('cms_pages_detail.creator'),
+                            showOnDisabledElements: true
+                        }"
+                        :router-link="{ name: 'sw.cms.pages.create' }"
+                        :disabled="!acl.can('cms_pages_detail.creator')"
+                        variant="primary"
+                    >
+                        {{ $tc('sw-cms-pages.list.addPage') }}
+                    </sw-button>
+                {% endblock %}
+            </template>
+        {% endblock %}
+
+
+        {% block sw_cms_pages_list_language_switch %}
+            <template #language-switch>
+                <sw-language-switch @on-change="onChangeLanguage" />
+            </template>
+        {% endblock %}
+
+        <template #content>
+            {% block sw_cms_pages_list_content %}
+                <div class="sw-manufacturer-list__content">
+                    {% block sw_cms_page_list_list_grid %}
+                        <sw-entity-listing
+                            v-if="entitySearchable"
+                            detail-route="sw.cms.pages.detail"
+                            :is-loading="isLoading"
+                            :columns="cmsColumns"
+                            :repository="pageRepository"
+                            :items="pages"
+                            :criteria-limit="limit"
+                            :sort-by="currentSortBy"
+                            :sort-direction="sortDirection"
+{#                            @inline-edit-save="onInlineEditSave"#}
+{#                            @inline-edit-cancel="onInlineEditCancel"#}
+                            :disable-data-fetching="true"
+{#                            :allow-edit="acl.can('cms_pages_overview.editor')"#}
+{#                            :allow-inline-edit="acl.can('cms_pages_overview.editor')"#}
+{#                            :allow-delete="acl.can('cms_pages_overview.deleter')"#}
+{#                            :show-selections="acl.can('cms_pages_overview.deleter')"#}
+                            identifier="sw-cms-pages-list"
+                            @update-records="updateTotal"
+                            @page-change="onPageChange"
+                            @column-sort="onSortColumn"
+                        >
+                            {% block sw_cms_page_list_grid_columns_name_preview %}
+                                <template #preview-name="{ item }">
+                                    <sw-media-preview-v2 :source="item.mediaId" />
+                                </template>
+                            {% endblock %}
+                        </sw-entity-listing>
+                    {% endblock %}
+                     @deprecated tag:v6.5.0 - Will be removed
+                    {% block sw_pages_list_grid_loader %}{% endblock %}
+                </div>
+            {% endblock %}
+
+        </template>
+    </sw-page>
+{% endblock %}

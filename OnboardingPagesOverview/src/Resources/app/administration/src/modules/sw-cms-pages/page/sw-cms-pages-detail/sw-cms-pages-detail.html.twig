@@ -1,0 +1,171 @@
+{% block sw_cms_pages_detail %}
+    <sw-page class="sw-cms-pages-detail">
+        {% block sw_cms_pages_detail_header %}
+            <template #smart-bar-header>
+                <h2>{{ placeholder(cmsPages, 'title', $tc('sw-cms-pages.detail.addPage')) }}</h2>
+            </template>
+        {% endblock %}
+        {% block sw_cms_pages_detail_actions %}
+            <template #smart-bar-actions>
+                {% block sw_cms_pages_detail_actions_abort %}
+                    <sw-button
+                        v-tooltip.bottom="tooltipCancel"
+{#                        :disabled="manufacturerIsLoading"#}
+                        @click="onCancel"
+                    >
+                        {{ $tc('sw-cms-pages.detail.cancel')}}
+                    </sw-button>
+                {% endblock %}
+
+                {% block sw_cms_pages_detail_actions_save %}
+                    <sw-button-process
+                        v-model="isSaveSuccessful"
+                        v-tooltip.bottom="tooltipSave"
+                        class="sw-manufacturer-detail__save-action"
+                        :is-loading="isLoading"
+                        :disabled="isLoading || !acl.can('product_manufacturer.editor')"
+                        variant="primary"
+                        @click.prevent="onSave"
+                    >
+                        {{ $tc('sw-cms-pages.detail.save')}}
+                    </sw-button-process>
+                {% endblock %}
+            </template>
+        {% endblock %}
+
+        {% block sw_cms_pages_detail_language_switch %}
+            <template #language-switch>
+                <sw-language-switch
+                    :disabled="pageId == null"
+                    :save-changes-function="saveOnLanguageChange"
+                     :abort-change-function="abortOnLanguageChange"
+                      @on-change="onChangeLanguage"
+                />
+            </template>
+        {% endblock %}
+              {% block sw_cms_pages_detail_content %}#}
+                    <sw-card-view slot="content">
+                        <template v-if="cmsIsLoading">
+                            <sw-skeleton variant="detail-bold" />
+                            <sw-skeleton />
+                        </template>
+                        <template v-else >
+                            {% block sw_cms_pages_detail_content_language_info %}
+                                <sw-language-info
+                                    :entity-description="placeholder(cmsPages, 'title', $tc('sw-cms-pages.detail.addPage'))"
+                                />
+                            {% endblock %}
+
+                            {% block sw_cms_pages_detail_base_basic_info_card %}
+                                <sw-card
+                                    position-identifier="sw-manufacturer-detail-basic-info"
+                                    :title="$tc('sw-cms-pages.detail.pageInfo')"
+                                >
+
+                                    {% block sw_customer_address_form_country_field %}
+                                        <sw-entity-single-select
+                                            v-if="pageId == null"
+{#                                            :disabled="pageId != null"#}
+                                            v-model="cmsPages.pageId"
+                                            class="sw-customer-address-form__country-select"
+                                            entity="cms_pages_overview"
+                                            :criteria="cmsPageCriteria"
+                                            :label="$tc('sw-cms-pages.detail.addPage')"
+                                            :placeholder="$tc('sw-cms-pages.detail.selectPage')"
+                                            validation="required"
+                                            required
+                                            show-clearable-button>
+
+                                        </sw-entity-single-select>
+                                    {% endblock %}
+                                    {% block sw_cms_pages_detail_base_info_page_name%}
+                                        <sw-field
+                                            v-if="pageId != null"
+                                            v-model="cmsPages.cmsPagesOverview.name"
+                                            entity="cms_pages_overview"
+                                            type="text"
+                                            :disabled="true"
+                                            :label="$tc('sw-cms-pages.detail.addPage')"
+                                            :placeholder="$tc('sw-cms-pages.detail.selectPage')"
+                                            name="$tc('sw-cms-pages.detail.addPage')"
+                                            validation="required"
+                                            required
+                                        />
+                                    {% endblock %}
+                                    <sw-container
+                                        class="sw-manufacturer-detail__container"
+                                        columns="repeat(auto-fit, minmax(250px, 1fr))"
+                                        gap="0 30px"
+                                    >
+                                        <div class="sw-manufacturer-detail__base-info-wrapper">
+                                            {% block sw_cms_pages_detail_base_info_field_name %}
+                                                <sw-field
+                                                    v-model="cmsPages.title"
+                                                    type="text"
+                                                    :label="$tc('sw-cms-pages.detail.pageName')"
+                                                    :placeholder="placeholder(cmsPages, 'pageName',$tc('sw-cms-pages.detail.placeholderTitle'))"
+                                                    name="title"
+                                                    validation="required"
+                                                    required
+                                                />
+                                            {% endblock %}
+                                        </div>
+
+                                        {% block sw_cms_pages_detail_logo_upload %}
+                                            <sw-upload-listener
+                                                :upload-tag="mediaUploadTag"
+                                                auto-upload
+                                                @media-upload-finish="setMediaItem"
+                                            />
+                                            <sw-media-upload-v2
+                                                class="sw-manufacturer-detail__logo-upload"
+                                                :source="cmsPages.mediaId"
+                                                :allow-multi-select="false"
+                                                variant="regular"
+                                                :upload-tag="mediaUploadTag"
+                                                :label="$tc('sw-cms-pages.detail.selectImage')"
+                                                :default-folder="pageRepository.entityName"
+                                                @sw-media-upload-v2-media-upload-success="setMediaItem"
+                                                @media-drop="onDropMedia"
+                                                @media-upload-sidebar-open="openMediaSidebar"
+                                                @media-upload-remove-image="onUnlinkLogo"
+                                            />
+                                        {% endblock %}
+                                    </sw-container>
+                                    {% block sw_manufacturer_detail_base_info_field_description %}
+                                        <sw-text-editor
+                                            v-model="cmsPages.description"
+                                            :label="$tc('sw-cms-pages.detail.description')"
+                                            :placeholder="placeholder(cmsPages, 'description', $tc('sw-cms-pages.detail.placeholderDescription'))"
+                                            name="description"
+
+                                        />
+                                    {% endblock %}
+                                </sw-card>
+                            {% endblock %}
+                        </template>
+                    </sw-card-view>
+                {% endblock %}
+
+        {% block sw_cms_pages_detail_sidebar %}
+            <template slot="sidebar">
+                <sw-sidebar :propagate-width="true">
+                    <sw-sidebar-media-item
+                        ref="mediaSidebarItem"
+{#                        :disabled="!acl.can('cmsPages.editor')"#}
+                    >
+                        <template
+                            slot="context-menu-items"
+                            slot-scope="media"
+                        >
+                            <sw-context-menu-item @click="setMediaFromSidebar(media.mediaItem)">
+                                {{ $tc('sw-manufacturer.detail.labelUseAsLogo') }}
+                            </sw-context-menu-item>
+                        </template>
+                    </sw-sidebar-media-item>
+                </sw-sidebar>
+            </template>
+        {% endblock %}
+
+    </sw-page>
+{% endblock %}
