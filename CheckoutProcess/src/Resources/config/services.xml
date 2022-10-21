@@ -1,0 +1,63 @@
+<?xml version="1.0" ?>
+
+<container xmlns="http://symfony.com/schema/dic/services"
+           xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+           xsi:schemaLocation="http://symfony.com/schema/dic/services http://symfony.com/schema/dic/services/services-1.0.xsd">
+    <services>
+        <service id="CheckoutProcess\Core\Content\Account\SalesChannel\CartLoadRoute" public="true">
+            <argument type="service" id="account_register_customer.repository"/>
+        </service>
+
+        <service id="CheckoutProcess\Core\Api\Controller\Order\OrderController" public="true">
+            <argument type="service" id="Shopware\Core\Checkout\Cart\Order\OrderConverter"/>
+            <argument type="service" id="Shopware\Core\Checkout\Cart\CartPersister"/>
+            <argument type="service" id="order.repository"/>
+            <call method="setContainer">
+                <argument type="service"  id="service_container"/>
+            </call>
+        </service>
+        <service id="CheckoutProcess\Core\Api\Controller\CartController" public="true">
+            <argument type="service" id="Shopware\Core\Checkout\Cart\CartPersister"/>
+            <argument type="service" id="Symfony\Contracts\EventDispatcher\EventDispatcherInterface"/>
+            <argument type="service" id="Shopware\Core\Checkout\Cart\CartCalculator"/>
+
+        </service>
+        <service id="CheckoutProcess\Core\Api\Controller\CartRemoveController" public="true">
+            <argument type="service" id="Shopware\Core\Checkout\Cart\CartPersister"/>
+            <argument type="service" id="Symfony\Contracts\EventDispatcher\EventDispatcherInterface"/>
+        </service>
+        <service id="CheckoutProcess\Core\Api\Controller\CartItemAddController" public="true">
+            <argument type="service" id="Shopware\Core\Checkout\Cart\CartCalculator"/>
+            <argument type="service" id="Shopware\Core\Checkout\Cart\CartPersister"/>
+            <argument type="service" id="Symfony\Contracts\EventDispatcher\EventDispatcherInterface"/>
+            <argument type="service" id="Shopware\Core\Checkout\Cart\LineItemFactoryRegistry"/>
+        </service>
+        <service id="CheckoutProcess\Core\Api\Controller\CartItemRemoveController" public="true">
+            <argument type="service" id="Symfony\Contracts\EventDispatcher\EventDispatcherInterface"/>
+            <argument type="service" id="Shopware\Core\Checkout\Cart\CartCalculator"/>
+            <argument type="service" id="Shopware\Core\Checkout\Cart\CartPersister"/>
+        </service>
+         <service id="CheckoutProcess\Core\Api\Controller\CartItemUpdateController" public="true">
+            <argument type="service" id="Shopware\Core\Checkout\Cart\CartPersister"/>
+            <argument type="service" id="Shopware\Core\Checkout\Cart\CartCalculator"/>
+            <argument type="service" id="Shopware\Core\Checkout\Cart\LineItemFactoryRegistry"/>
+            <argument type="service" id="Symfony\Contracts\EventDispatcher\EventDispatcherInterface"/>
+        </service>
+	<service id="CheckoutProcess\Core\Api\Controller\Payment\PaymentController" public="true">
+            <argument type="service" id="payment_method.repository"/>
+            <argument type="service" id="Shopware\Core\System\SystemConfig\SystemConfigService"/>
+            <call method="setContainer">
+                <argument type="service"  id="service_container"/>
+            </call>
+        </service>
+        <service id="CheckoutProcess\Core\Api\Controller\Order\OrderController" public="true">
+            <argument type="service" id="Shopware\Core\System\NumberRange\ValueGenerator\NumberRangeValueGeneratorInterface"/>
+            <argument type="service" id="order.repository"/>
+            <argument type="service" id="customer.repository"/>
+            <argument type="service" id="Shopware\Core\Checkout\Cart\LineItemFactoryRegistry"/>
+            <call method="setContainer">
+                <argument type="service"  id="service_container"/>
+            </call>
+        </service>
+    </services>
+</container>

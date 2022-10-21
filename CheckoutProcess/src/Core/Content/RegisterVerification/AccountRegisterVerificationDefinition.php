@@ -37,8 +37,7 @@ class AccountRegisterVerificationDefinition extends EntityDefinition
             (new StringField('email', 'email'))->addFlags(new Required(), new ApiAware()),
             (new StringField('password', 'password'))->addFlags(new Required(), new ApiAware()),
             (new StringField('confirm_password', 'confirmPassword'))->addFlags(new Required(), new ApiAware()),
-            (new IntField('otp', 'otp'))->addFlags(new ApiAware()),
-            (new IntField('forgot_otp', 'forgotOtp'))->addFlags(new ApiAware())
+            (new IntField('otp', 'otp'))->addFlags(new ApiAware())
         ]);
     }
 }

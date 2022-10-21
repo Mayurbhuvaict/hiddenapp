@@ -1,12 +1,13 @@
 <?php declare(strict_types=1);
 
-namespace AccountOverview\Core\Content\RegisterVerification;
+namespace AccountOverview\Core\Content\RegisterCustomer;
 
 use Shopware\Core\Framework\DataAbstractionLayer\Entity;
 use Shopware\Core\Framework\DataAbstractionLayer\EntityIdTrait;
-;
+use Shopware\Core\Checkout\Customer\CustomerEntity;
+use Shopware\Core\Content\Category\CategoryEntity;
 
-class AccountRegisterVerificationEntity extends Entity
+class AccountRegisterCustomerEntity extends Entity
 {
     use EntityIdTrait;
 
@@ -18,27 +19,22 @@ class AccountRegisterVerificationEntity extends Entity
     /**
      * @var string
      */
-    protected $email;
+    protected $customerId;
 
     /**
      * @var string
      */
-    protected $password;
+    protected $categoryId;
 
     /**
-     * @var string
+     * @var CustomerEntity|null
      */
-    protected $confirmPassword;
+    protected $customer;
 
     /**
-     * @var int|null
+     * @var CategoryEntity|null
      */
-    protected $otp;
-
-    /**
-     * @var int|null
-     */
-    protected $forgotOtp;
+    protected $category;
 
     /**
      * @var \DateTimeInterface
@@ -60,54 +56,44 @@ class AccountRegisterVerificationEntity extends Entity
         $this->id = $id;
     }
 
-    public function getEmail(): string
+    public function getCustomerId(): string
     {
-        return $this->email;
+        return $this->customerId;
     }
 
-    public function setEmail(string $email): void
+    public function setCustomerId(string $customerId): void
     {
-        $this->email = $email;
+        $this->customerId = $customerId;
     }
 
-    public function getPassword(): string
+    public function getCategoryId(): string
     {
-        return $this->password;
+        return $this->categoryId;
     }
 
-    public function setPassword(string $password): void
+    public function setCategoryId(string $categoryId): void
     {
-        $this->password = $password;
+        $this->categoryId = $categoryId;
     }
 
-    public function getConfirmPassword(): string
+    public function getCustomer(): ?CustomerEntity
     {
-        return $this->confirmPassword;
+        return $this->customer;
     }
 
-    public function setConfirmPassword(string $confirmPassword): void
+    public function setCustomer(?CustomerEntity $customer): void
     {
-        $this->confirmPassword = $confirmPassword;
+        $this->customer = $customer;
     }
 
-    public function getOtp(): ?int
+    public function getCategory(): ?CategoryEntity
     {
-        return $this->otp;
+        return $this->category;
     }
 
-    public function setOtp(?int $otp): void
+    public function setCategory(?CategoryEntity $category): void
     {
-        $this->otp = $otp;
-    }
-
-    public function getForgotOtp(): ?int
-    {
-        return $this->forgotOtp;
-    }
-
-    public function setForgotOtp(?int $forgotOtp): void
-    {
-        $this->forgotOtp = $forgotOtp;
+        $this->category = $category;
     }
 
     public function getCreatedAt(): \DateTimeInterface

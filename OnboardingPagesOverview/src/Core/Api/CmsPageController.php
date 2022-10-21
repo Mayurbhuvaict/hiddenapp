@@ -20,7 +20,7 @@ use Symfony\Component\Routing\Annotation\Route;
  * @deprecated tag:v6.5.0 - reason:becomes-internal - Will be internal
  */
 
-class CmsPageController extends AbstractController{/**
+class CmsPageController extends AbstractController{
 
 /**
  * @var EntityRepositoryInterface
@@ -74,15 +74,16 @@ class CmsPageController extends AbstractController{/**
     }
 
     /**
-     * @Route ("store-api/cms-page-data/cmsPageData", name="api.custom.cms_page_data.cmsPageData", methods={"GET"})
+     * @Route ("store-api/cms-page-data/cmsPageData/{slug}", name="api.custom.cms_page_data.cmsPageData", methods={"GET"})
      * @param RequestDataBag $request
      * @param SalesChannelContext $context
      * @return JsonResponse
      */
-    public function cmsPageData(Context $context): JsonResponse
+    public function cmsPageData(string $slug, Context $context) : JsonResponse
     {
         $criteria = new Criteria();
         $criteria->addAssociation('cmsPagesOverview.pageId');
+
         $criteria->addFilter(
             new NotFilter(
                 NotFilter::CONNECTION_OR,
@@ -95,7 +96,6 @@ class CmsPageController extends AbstractController{/**
 
         $pageData = $this->cmsPagesRepository->search($criteria, $context)->getElements();
 
-        $filterData = [];
         if($pageData == null){
             return new JsonResponse([
                 'type' => 'fail',
@@ -104,15 +104,13 @@ class CmsPageController extends AbstractController{/**
             ]);
         }else {
             foreach($pageData as $data){
-                $filterData[] = [
-                    'id'=> $data->id,
-                    'page'=>$data->pageId,
-                    'title'=>$data->title,
-                    'html'=>$data->description,
-                    'image'=>$data->mediaId
-                ];
+                if($data->cmsPagesOverview->slug === $slug){
+                    $filterData[] = [
+                        'title'=>$data->title,
+                        'html'=>$data->description,
+                    ];
+                }
             }
-
             return new JsonResponse([
                 'type' => 'success',
                 'status' => 200,

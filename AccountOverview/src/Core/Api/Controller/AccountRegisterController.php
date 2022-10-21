@@ -4,12 +4,16 @@ namespace AccountOverview\Core\Api\Controller;
 
 
 use Doctrine\DBAL\Connection;
+use Shopware\Core\Checkout\Customer\Event\CustomerLoginEvent;
+use Shopware\Core\Checkout\Customer\SalesChannel\CustomerResponse;
 use Shopware\Core\Content\Mail\Service\AbstractMailFactory;
 use Shopware\Core\Content\Mail\Service\AbstractMailSender;
 use Shopware\Core\Framework\DataAbstractionLayer\EntityRepository;
 use Shopware\Core\Framework\DataAbstractionLayer\EntityRepositoryInterface;
 use Shopware\Core\Framework\DataAbstractionLayer\Search\Criteria;
 use Monolog\Logger;
+use Shopware\Core\PlatformRequest;
+use Shopware\Core\System\SalesChannel\Context\SalesChannelContextServiceParameters;
 use Shopware\Core\System\SalesChannel\SalesChannelContext;
 use Shopware\Core\Test\TestDefaults;
 use Shopware\Core\Framework\Context;
@@ -19,11 +23,14 @@ use Shopware\Core\System\NumberRange\ValueGenerator\NumberRangeValueGeneratorInt
 use Shopware\Core\Framework\Validation\DataBag\RequestDataBag;
 use Shopware\Core\System\SystemConfig\SystemConfigService;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Annotation\Route;
 use Shopware\Core\System\SalesChannel\Context\SalesChannelContextPersister;
 use Shopware\Core\System\SalesChannel\ContextTokenResponse;
+use Shopware\Core\System\SalesChannel\Context\SalesChannelContextServiceInterface;
+
 
 
 /**
@@ -42,12 +49,14 @@ class AccountRegisterController extends AbstractController
     private EntityRepository $logEntryRepository;
     private EntityRepository $categoryRepository;
     private EntityRepository $promotionRepository;
-    private EntityRepositoryInterface $customerRepository;
+    private EntityRepository $customerRepository;
     private EntityRepository $customerGroupRepository;
     private EntityRepository $productRepository;
     private NumberRangeValueGeneratorInterface $numberRangeValueGenerator;
     private EntityRepository $customerExtensionRepository;
     private SalesChannelContextPersister $contextPersister;
+    private SalesChannelContextServiceInterface $contextService;
+    private EventDispatcherInterface $eventDispatcher;
 
     public function __construct(
         AbstractMailFactory $mailFactory,
@@ -58,12 +67,15 @@ class AccountRegisterController extends AbstractController
         EntityRepository    $logEntryRepository,
         EntityRepository    $categoryRepository,
         EntityRepository    $promotionRepository,
-        EntityRepositoryInterface    $customerRepository,
+        EntityRepository    $customerRepository,
         EntityRepository    $customerGroupRepository,
         EntityRepository    $productRepository,
         NumberRangeValueGeneratorInterface $numberRangeValueGenerator,
         EntityRepository $customerExtensionRepository,
-        SalesChannelContextPersister $contextPersister
+        SalesChannelContextPersister $contextPersister,
+        SalesChannelContextServiceInterface $contextService,
+        EventDispatcherInterface $eventDispatcher
+
     )
     {
         $this->mailFactory = $mailFactory;
@@ -80,6 +92,8 @@ class AccountRegisterController extends AbstractController
         $this->numberRangeValueGenerator = $numberRangeValueGenerator;
         $this->customerExtensionRepository = $customerExtensionRepository;
         $this->contextPersister = $contextPersister;
+        $this->contextService = $contextService;
+        $this->eventDispatcher = $eventDispatcher;
     }
 
     //------------ Get Register Details ---------------
@@ -256,6 +270,36 @@ class AccountRegisterController extends AbstractController
         ]);
 
     }
+
+    /**
+     * @Route ("store-api/account-verify/forgotOtpMatch", name="api.account.verify.forgotOtpMatch", methods={"POST"})
+     * @param Context $context
+     * @return Response
+     * @return JsonResponse
+     */
+
+    public function forgotOtpMatch(RequestDataBag $request, Context  $context): JsonResponse
+    {
+        //Getting user's email and otp details
+        $opt = $request->get('otp');
+        //verifying data with database
+        $criteria = new Criteria();
+        $criteria->addFilter(new EqualsFilter('forgotOtp', $opt));
+        $verificationResult = $this->accountRegisterVerificationRepository->search($criteria, $context);
+        //Email and OTP Not Match With Database
+        if (1 !== $verificationResult->count()) {
+            $response = false;
+            return new JsonResponse([
+                'status' => 404,
+                'type' => 'Fail',
+            ]);
+        }
+        return new JsonResponse([
+            'type' => 'success',
+            'status' => 200,
+            'data' => 'OTP verified',
+        ]);
+    }
     //-------------- Re-send OTP Details --------------
     /**
      * @Route ("store-api/account-resend/otp", name="api.account.resend.otp", methods={"POST"})
@@ -314,6 +358,8 @@ class AccountRegisterController extends AbstractController
             $promotionCriteria->addFilter(new EqualsFilter('code', $emp));
             $promotionCriteria->addAssociation('discounts');
             $code = $this->promotionRepository->search($promotionCriteria, $context)->first();
+
+
             if (!empty($code)) {
                 foreach ($code->getDiscounts()->getElements() as $value)
                 {
@@ -323,21 +369,11 @@ class AccountRegisterController extends AbstractController
                         'value'=>$value->getValue()
                     ];
                 }
-                $criteria = new Criteria();
-                $criteria->addAssociation('translations.name');
-                $categories = $this->categoryRepository->search($criteria, $context)->getElements();
-                foreach ($categories as $category) {
-                    $cat[] = [
-                        'id' => $category->getId(),
-                        'name' => $category->getTranslated()['name']
-                    ];
-                }
 
                 return new JsonResponse([
                     'status' => 200,
                     'type' => 'Success',
-                    'codeDiscount' => $discount,
-                    'categories'=>$cat
+                    'codeDiscount' => $discount
                 ]);
             } else {
                 return new JsonResponse([
@@ -369,14 +405,15 @@ class AccountRegisterController extends AbstractController
             $customer = $this->customerRepository->search($customerCriteria, $context)->first();
 
             if ($customer != null) {
-                $data = '1234567890ABCDEFGHIJKLMNOPQRSTUVWXYZabcefghijklmnopqrstuvwxyz!@#$%&*';
-                $otp = substr(str_shuffle($data), 0, 8);
+
+                $otp = random_int(10000, 99999);
                 $data = [];
                 $data[] = [
                     'id' => $customer->getId(),
                     'email' => $email,
                     'password' => $otp,
-                    'confirmPassword' => $otp
+                    'confirmPassword' => $otp,
+                    'forgotOtp' => $otp
                 ];
                 $this->accountRegisterVerificationRepository->upsert($data, $context);
                 //------------  Mail Send Process  -----------
@@ -448,7 +485,8 @@ class AccountRegisterController extends AbstractController
                 return new JsonResponse([
                     'status' => 200,
                     'type' => 'success',
-                    'data' => 'We have sent you a temproray password on your email.'
+                    'data' => 'We have sent you OTP on your email.',
+                    'customer_id' => $customer->getId()
                 ]);
             } else {
                 return new JsonResponse([
@@ -473,11 +511,12 @@ class AccountRegisterController extends AbstractController
 
     public function resetPassword(RequestDataBag $data, Context $context): JsonResponse
     {
-        $email = $data->get('email');
+//        $email = $data->get('email');
+        $customerId = $data->get('customer_id');
         $password = $data->get('password');
         $confirmPassword = $data->get('confirm_password');
         $accountFindCriteria = new Criteria();
-        $accountFindCriteria->addFilter(new EqualsFilter('email', $email));
+        $accountFindCriteria->addFilter(new EqualsFilter('id', $customerId));
         $accountData = $this->customerRepository->search($accountFindCriteria, $context)->first();
         if ($accountData != null) {
             if ($password == $confirmPassword) {
@@ -492,6 +531,7 @@ class AccountRegisterController extends AbstractController
                     'type' => 'success',
                     'status' => 200,
                     'data' => 'user password updated successfully.',
+                    'customer_id' => $accountData->getId()
                 ]);
             } else {
                 return new JsonResponse([
@@ -596,7 +636,9 @@ class AccountRegisterController extends AbstractController
         if($mail == null)
         {
             $addressId = Uuid::randomHex();
-            $customerData[] = [
+            $customerDataId = Uuid::randomHex();
+            $customerData = [
+                'id' => $customerDataId,
                 'groupId' => TestDefaults::FALLBACK_CUSTOMER_GROUP,
                 'defaultPaymentMethodId' => $payment,
                 'salesChannelId' => $context->getSalesChannel()->getId(),
@@ -614,8 +656,8 @@ class AccountRegisterController extends AbstractController
                 'defaultBillingAddressId' => $addressId,
                 'customerNumber' => $this->numberRangeValueGenerator->getValue(
                     $this->customerRepository->getDefinition()->getEntityName(),
-                    $context,
-                    $context->getSalesChannel()->getId(),
+                    $context->getContext(),
+                    $context->getSalesChannel()->getId()
                 ),
                 'firstName' => $updatedData['name'],
                 'lastName' => $updatedData['surname'],
@@ -630,12 +672,55 @@ class AccountRegisterController extends AbstractController
 
                 ]
             ];
+           $this->customerRepository->create([$customerData], $context->getContext());
+            $criteria = new Criteria([$customerData['id']]);
+
+            /** @var CustomerEntity $customerEntity */
+            $customerEntity = $this->customerRepository->search($criteria, $context->getContext())->first();
+
+            $response = new CustomerResponse($customerEntity);
+
             $newToken = $this->contextPersister->replace($context->getToken(), $context);
+
+            $this->contextPersister->save(
+                $newToken,
+                [
+                    'customerId' => $customerEntity->getId(),
+                    'billingAddressId' => null,
+                    'shippingAddressId' => null,
+                    'domainId' => $context->getDomainId(),
+                ],
+                $context->getSalesChannel()->getId(),
+                $customerEntity->getId()
+            );
+
+            $new = $this->contextService->get(
+                new SalesChannelContextServiceParameters(
+                    $context->getSalesChannel()->getId(),
+                    $newToken,
+                    $context->getLanguageId(),
+                    $context->getCurrencyId(),
+                    $context->getDomainId(),
+                    $context->getContext(),
+                    $customerEntity->getId()
+                )
+            );
+        $new->addState(...$context->getStates());
+
+            $event = new CustomerLoginEvent($new, $customerEntity, $newToken);
+            $this->eventDispatcher->dispatch($event);
+
+            $response->headers->set(PlatformRequest::HEADER_CONTEXT_TOKEN, $newToken);
+
+            // We don't want to leak the hash in store-api
+            $customerEntity->setHash('');
+
             return new JsonResponse([
                 'status' => 200,
                 'type' => 'success',
                 'data' => 'Customer successfully register',
-                'token' =>  $newToken
+                'token' =>  $newToken,
+                'customer_id' => $customerDataId
             ]);
         }else{
             return new JsonResponse([
@@ -656,7 +741,7 @@ class AccountRegisterController extends AbstractController
 
     public function getCustomer(RequestDataBag $data,Context $context): JsonResponse
     {
-        $customerId = $data->get('customerId');
+        $customerId = $data->get('customer_id');
         $customerCriteria = new Criteria();
         $customerCriteria->addFilter(new EqualsFilter('id',$customerId));
         $customer = $this->customerRepository->search($customerCriteria,$context)->first();
@@ -667,15 +752,15 @@ class AccountRegisterController extends AbstractController
         if($customer != null)
         {
             $customerData = [
-                'id' => $customer->getId(),
-                'firstName' => $customer->getfirstName(),
-                'lastName' => $customer->getlastName(),
+                'customer_id' => $customer->getId(),
+                'name' => $customer->getfirstName(),
+                'surname' => $customer->getlastName(),
                 'email' => $customer->getemail(),
                 'birthday' => $customer->getbirthday()->format("d M Y"),
                 'address'=> $customerExtension->getaddress(),
-                'mobileNumber' => $customerExtension->getmobileNumber(),
-                'employeeCode' => $customerExtension->getemployeeCode(),
-                'categoryId' => $customerExtension->getcategoryId(),
+                'mobile_number' => $customerExtension->getmobileNumber(),
+                'employee_code' => $customerExtension->getemployeeCode(),
+                'category_id' => $customerExtension->getcategoryId(),
             ];
 
 
@@ -750,7 +835,7 @@ class AccountRegisterController extends AbstractController
 
     public function deleteCustomer(RequestDataBag $data,Context $context):JsonResponse
     {
-        $customerId = $data->get('customerId');
+        $customerId = $data->get('customer_id');
         $password = $data->get('password');
         $confirmPassword = $data->get('confirm_password');
         $criteria = new Criteria();
@@ -823,7 +908,8 @@ class AccountRegisterController extends AbstractController
             return new JsonResponse([
                 'status' => 200,
                 'type' => 'Success',
-                'codeDiscount' => $discount
+                'codeDiscount' => $discount,
+                'customerId' => $customerId
             ]);
         } else {
             return new JsonResponse([
@@ -836,10 +922,12 @@ class AccountRegisterController extends AbstractController
 
 
 // ************************* Update Category ***********************
+
     /**
-     * @Route ("store-api/account-register/updateCategory", name="api.account.register.category", methods={"post"})
+     * @Route ("store-api/account-register/updateCategory", name="api.account.register.updateCategory", methods={"post"})
+     * @param RequestDataBag $data
      * @param Context $context
-     * @return Response
+     * @return JsonResponse
      * @throws \Exception
      */
 

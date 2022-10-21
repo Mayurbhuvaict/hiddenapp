@@ -4,7 +4,7 @@ namespace AccountOverview\Core\Content\RegisterVerification;
 
 use Shopware\Core\Framework\DataAbstractionLayer\Entity;
 use Shopware\Core\Framework\DataAbstractionLayer\EntityIdTrait;
-;
+
 
 class AccountRegisterVerificationEntity extends Entity
 {
@@ -34,11 +34,6 @@ class AccountRegisterVerificationEntity extends Entity
      * @var int|null
      */
     protected $otp;
-
-    /**
-     * @var int|null
-     */
-    protected $forgotOtp;
 
     /**
      * @var \DateTimeInterface
@@ -100,17 +95,7 @@ class AccountRegisterVerificationEntity extends Entity
         $this->otp = $otp;
     }
 
-    public function getForgotOtp(): ?int
-    {
-        return $this->forgotOtp;
-    }
-
-    public function setForgotOtp(?int $forgotOtp): void
-    {
-        $this->forgotOtp = $forgotOtp;
-    }
-
-    public function getCreatedAt(): \DateTimeInterface
+    public function getCreatedAt(): ?\DateTimeInterface
     {
         return $this->createdAt;
     }

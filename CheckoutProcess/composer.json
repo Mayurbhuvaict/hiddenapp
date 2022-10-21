@@ -1,0 +1,18 @@
+{
+  "name": "swag/CheckoutProcess",
+  "description": "CheckoutProcess plugin",
+  "type": "shopware-platform-plugin",
+  "license": "MIT",
+  "autoload": {
+    "psr-4": {
+      "CheckoutProcess\\": "src/"
+    }
+  },
+  "extra": {
+    "shopware-plugin-class": "CheckoutProcess\\CheckoutProcess",
+    "label": {
+      "de-DE": "Check-out-Prozess",
+      "en-GB": "Checkout Process"
+    }
+  }
+}
